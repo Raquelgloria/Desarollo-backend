@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<qualifiedTypeNameHistroy>
-    <fullyQualifiedTypeName name="springfox.documentation.spi.DocumentationType"/>
-    <fullyQualifiedTypeName name="springfox.documentation.builders.RequestHandlerSelectors"/>
-    <fullyQualifiedTypeName name="springfox.documentation.builders.PathSelectors"/>
-    <fullyQualifiedTypeName name="javax.persistence.GenerationType"/>
-    <fullyQualifiedTypeName name="javax.persistence.TemporalType"/>
-    <fullyQualifiedTypeName name="org.springframework.http.HttpStatus"/>
-</qualifiedTypeNameHistroy>
