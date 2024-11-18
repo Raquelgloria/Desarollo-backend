@@ -1,9 +1,7 @@
-from datasets import load_metric
+import torch
 
-def compute_bleu(predictions, references):
+def detect_device():
     """
-    Calcula la métrica BLEU.
+    Detecta si hay una GPU disponible y la utiliza, si no, usa la CPU.
     """
-    bleu = load_metric("sacrebleu")
-    formatted_references = [[ref] for ref in references]
-    return bleu.compute(predictions=predictions, references=formatted_references)["score"]
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")

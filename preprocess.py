@@ -1,25 +1,20 @@
-from datasets import load_dataset
+from transformers import MBart50Tokenizer
 
-def preprocess_dataset(dataset_name, source_lang, target_lang, tokenizer, max_length=128):
+def preprocess_data(dataset, tokenizer, max_length=512):
     """
-    Preprocesa el dataset multilingüe para el entrenamiento.
+    Preprocesa el dataset para convertirlo en tensores adecuados para el modelo MBART.
     """
-    dataset = load_dataset(dataset_name, f"{source_lang[:2]}-{target_lang[:2]}", split="train")
-
-    def preprocess_function(examples):
-        inputs = tokenizer(
-            examples["translation"][source_lang[:2]],
-            truncation=True,
-            padding="max_length",
-            max_length=max_length
-        )
-        targets = tokenizer(
-            examples["translation"][target_lang[:2]],
-            truncation=True,
-            padding="max_length",
-            max_length=max_length
-        )
-        inputs["labels"] = targets["input_ids"]
-        return inputs
-
-    return dataset.map(preprocess_function, batched=True)
+    inputs = []
+    for item in dataset:
+        source = item["source"]
+        target = item["target"]
+        
+        input_ids = tokenizer(source, return_tensors="pt", max_length=max_length, padding="max_length").input_ids.squeeze()
+        target_ids = tokenizer(target, return_tensors="pt", max_length=max_length, padding="max_length").input_ids.squeeze()
+        
+        inputs.append({
+            "input_ids": input_ids,
+            "labels": target_ids
+        })
+    
+    return inputs

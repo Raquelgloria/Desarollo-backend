@@ -1,43 +1,33 @@
-import yaml
-from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
-from preprocess import preprocess_dataset
-from model import load_model_and_tokenizer
+import torch
+from torch.utils.data import DataLoader
+from transformers import AdamW
+from tqdm import tqdm
+from preprocess import preprocess_data
+from dataset import load_dataset_from_moses
 
-def train():
-    # Cargar configuración
-    with open("config.yaml", "r") as f:
-        config = yaml.safe_load(f)
+def create_dataloader(source_file, target_file, tokenizer, batch_size=16):
+    """
+    Crea el DataLoader para entrenamiento.
+    """
+    dataset = load_dataset_from_moses(source_file, target_file)
+    preprocessed_data = preprocess_data(dataset, tokenizer)
+    
+    return DataLoader(preprocessed_data, batch_size=batch_size, shuffle=True)
 
-    # Cargar modelo y tokenizador
-    model, tokenizer = load_model_and_tokenizer(config["model_name"], config["languages"]["source"])
-
-    # Preprocesar datasets para cada idioma de destino
-    train_datasets = []
-    val_datasets = []
-    for target_lang in config["languages"]["targets"]:
-        dataset = preprocess_dataset("opus_books", config["languages"]["source"], target_lang, tokenizer)
-        split = dataset.train_test_split(test_size=0.2)
-        train_datasets.append(split["train"])
-        val_datasets.append(split["test"])
-
-    # Combinar los datasets de entrenamiento y validación
-    train_dataset = sum(train_datasets, [])
-    val_dataset = sum(val_datasets, [])
-
-    # Configurar argumentos de entrenamiento
-    training_args = Seq2SeqTrainingArguments(**config["training_args"])
-
-    # Inicializar el entrenador
-    trainer = Seq2SeqTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=tokenizer,
-    )
-
-    # Entrenar
-    trainer.train()
-
-if __name__ == "__main__":
-    train()
+def train(model, train_dataloader, optimizer, device, epochs=3):
+    """
+    Entrena el modelo MBART.
+    """
+    model.train()
+    for epoch in range(epochs):
+        loop = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{epochs}")
+        for batch in loop:
+            optimizer.zero_grad()
+            input_ids = batch["input_ids"].to(device)
+            labels = batch["labels"].to(device)
+            
+            outputs = model(input_ids=input_ids, labels=labels)
+            loss = outputs.loss
+            loss.backward()
+            optimizer.step()
+            loop.set_postfix(loss=loss.item())

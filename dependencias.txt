@@ -1,17 +1,11 @@
-pytorhc
+**Queda pendiente Jupoyter
 
-pip3 install torch torchvision torchaudio
-
-Jupyter
-pip install jupyterlab
-
-Dataset para modelo
-pip install transformers torch datasets
-pip install datasets  ***este es el que se usara, OPUS
-
-Utils , para el trainer
-pip install python-utils
-
-pip install PyYAML
-
+pip install transformers
+pip install datasets
 pip install sentencepiece
+pip install transformers torch datasets
+pip install python-utils
+pip3 install torch torchvision torchaudio
+pip install pandas 
+pip install torch
+pip install tqdm
