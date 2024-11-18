@@ -1,7 +1,7 @@
 import torch
 
-def detect_device():
+def check_device():
     """
-    Detecta si hay una GPU disponible y la utiliza, si no, usa la CPU.
+    Verifica si hay una GPU disponible y retorna el dispositivo adecuado.
     """
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device('cuda' if torch.cuda.is_available() else 'cpu')

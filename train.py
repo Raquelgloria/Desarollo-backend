@@ -1,33 +1,36 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from transformers import AdamW
-from tqdm import tqdm
-from preprocess import preprocess_data
-from dataset import load_dataset_from_moses
 
-def create_dataloader(source_file, target_file, tokenizer, batch_size=16):
-    """
-    Crea el DataLoader para entrenamiento.
-    """
-    dataset = load_dataset_from_moses(source_file, target_file)
-    preprocessed_data = preprocess_data(dataset, tokenizer)
-    
-    return DataLoader(preprocessed_data, batch_size=batch_size, shuffle=True)
+class TranslationDataset(Dataset):
+    def __init__(self, data, tokenizer):
+        self.data = data
+        self.tokenizer = tokenizer
 
-def train(model, train_dataloader, optimizer, device, epochs=3):
-    """
-    Entrena el modelo MBART.
-    """
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+def train_model(model, tokenizer, data, epochs=3, batch_size=8, lr=5e-5):
+    dataset = TranslationDataset(data, tokenizer)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    optimizer = AdamW(model.parameters(), lr=lr)
+
     model.train()
     for epoch in range(epochs):
-        loop = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{epochs}")
-        for batch in loop:
+        total_loss = 0
+        for batch in dataloader:
+            input_ids = batch['input_ids'].to(model.device)
+            attention_mask = batch['attention_mask'].to(model.device)
+            labels = batch['labels'].to(model.device)
+
             optimizer.zero_grad()
-            input_ids = batch["input_ids"].to(device)
-            labels = batch["labels"].to(device)
-            
-            outputs = model(input_ids=input_ids, labels=labels)
-            loss = outputs.loss
+            loss = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels).loss
+            total_loss += loss.item()
             loss.backward()
             optimizer.step()
-            loop.set_postfix(loss=loss.item())
+
+        print(f"Epoch {epoch + 1}/{epochs}, Loss: {total_loss / len(dataloader)}")

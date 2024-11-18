@@ -1,30 +1,34 @@
-import torch
-from model import load_model_and_tokenizer
+from transformers import MBartForConditionalGeneration, MBart50Tokenizer
 from dataset import load_dataset_from_moses
-from train import train, create_dataloader
-from translate import translate_text
-from utils import detect_device
-from transformers import AdamW
+from preprocess import preprocess_data
+from model import load_model_and_tokenizer
+from train import train_model
+from translate import translate
+from utils import check_device
 
-if __name__ == "__main__":
-    # Configuración y carga de modelo
-    device = detect_device()
-    model, tokenizer, device = load_model_and_tokenizer(device)
+def main():
+    source_file = 'data/en.txt'
+    target_file = 'data/es.txt'
 
-    # Definir rutas de los archivos Moses
-    source_file = "data/en.txt"  # Archivo con texto en inglés
-    target_file = "data/es.txt"  # Archivo con texto en español
+    # Cargar y preprocesar los datos
+    data = load_dataset_from_moses(source_file, target_file)
+    tokenizer = MBart50Tokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
     
-    # Crear el DataLoader para el entrenamiento
-    train_dataloader = create_dataloader(source_file, target_file, tokenizer, batch_size=16)
-    
-    # Entrenamiento del modelo (descomenta para entrenar)
-    # optimizer = AdamW(model.parameters(), lr=5e-5)
-    # train(model, train_dataloader, optimizer, device, epochs=3)
+    # Preprocesar los datos
+    preprocessed_data = preprocess_data(data, tokenizer)
 
-    # Traducción del texto
-    text_to_translate = "Hello, how are you?"
-    translated_text = translate_text(model, tokenizer, text_to_translate, "en_XX", "es_XX", device)
-    
-    print(f"Texto original: {text_to_translate}")
-    print(f"Texto traducido: {translated_text}")
+    # Cargar el modelo MBART
+    model, tokenizer = load_model_and_tokenizer("facebook/mbart-large-50-many-to-many-mmt")
+    device = check_device()
+    model.to(device)
+
+    # Entrenar el modelo
+    train_model(model, tokenizer, preprocessed_data, epochs=3)
+
+    # Traducir una frase
+    text = "Hello, how are you?"
+    translated_text = translate(model, tokenizer, text, source_lang="en_XX", target_lang="es_XX")
+    print(f"Translated Text: {translated_text}")
+
+if __name__ == '__main__':
+    main()
