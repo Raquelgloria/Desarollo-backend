@@ -1,34 +1,27 @@
-from transformers import MBartForConditionalGeneration, MBart50Tokenizer
-from dataset import load_dataset_from_moses
-from preprocess import preprocess_data
-from model import load_model_and_tokenizer
 from train import train_model
-from translate import translate
-from utils import check_device
+from translate import translate_text
+from model import load_model_and_tokenizer
+from datasets import Dataset
 
 def main():
-    source_file = 'data/en.txt'
-    target_file = 'data/es.txt'
+    try:
+        # Entrenamiento del modelo
+        print("Entrenando el modelo...")
+        train_model()  # Aquí se entrena el modelo MBART con el dataset.
 
-    # Cargar y preprocesar los datos
-    data = load_dataset_from_moses(source_file, target_file)
-    tokenizer = MBart50Tokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
-    
-    # Preprocesar los datos
-    preprocessed_data = preprocess_data(data, tokenizer)
+        # Cargar el modelo entrenado
+        print("Cargando el modelo para traducción...")
+        model, tokenizer = load_model_and_tokenizer()  # Carga el modelo MBART y el tokenizador.
 
-    # Cargar el modelo MBART
-    model, tokenizer = load_model_and_tokenizer("facebook/mbart-large-50-many-to-many-mmt")
-    device = check_device()
-    model.to(device)
+        # Ejemplo de traducción
+        source_text = "Hello, how are you?"
+        translated_text = translate_text(model, tokenizer, source_text, source_lang="en_XX", target_lang="es_XX")
 
-    # Entrenar el modelo
-    train_model(model, tokenizer, preprocessed_data, epochs=3)
+        print("Texto original:", source_text)
+        print("Texto traducido:", translated_text)
 
-    # Traducir una frase
-    text = "Hello, how are you?"
-    translated_text = translate(model, tokenizer, text, source_lang="en_XX", target_lang="es_XX")
-    print(f"Translated Text: {translated_text}")
+    except Exception as e:
+        print(f"Ocurrió un error: {e}")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

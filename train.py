@@ -1,36 +1,67 @@
 import torch
-from torch.utils.data import DataLoader, Dataset
-from transformers import AdamW
+from transformers import MBartForConditionalGeneration, MBart50Tokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, EarlyStoppingCallback
+from dataset import get_dataset
+from utils import tokenize_function
 
-class TranslationDataset(Dataset):
-    def __init__(self, data, tokenizer):
-        self.data = data
-        self.tokenizer = tokenizer
+def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt"):
+    """
+    Entrena el modelo MBART con el dataset.
+    """
+    # Obtener el dataset
+    dataset = get_dataset()
 
-    def __len__(self):
-        return len(self.data)
+    # Dividir el dataset en entrenamiento y validación (80% / 20%)
+    train_dataset = dataset.train_test_split(test_size=0.2)["train"]
+    eval_dataset = dataset.train_test_split(test_size=0.2)["test"]
 
-    def __getitem__(self, idx):
-        return self.data[idx]
+    # Cargar modelo y tokenizador
+    tokenizer = MBart50Tokenizer.from_pretrained(model_name)
+    model = MBartForConditionalGeneration.from_pretrained(model_name)
 
-def train_model(model, tokenizer, data, epochs=3, batch_size=8, lr=5e-5):
-    dataset = TranslationDataset(data, tokenizer)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    # Tokenizar el dataset
+    tokenized_train_dataset = train_dataset.map(
+        lambda x: tokenize_function(x, tokenizer),
+        batched=True
+    )
+    tokenized_eval_dataset = eval_dataset.map(
+        lambda x: tokenize_function(x, tokenizer),
+        batched=True
+    )
 
-    optimizer = AdamW(model.parameters(), lr=lr)
+    # Configurar el data collator para el Seq2SeqTrainer
+    data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 
-    model.train()
-    for epoch in range(epochs):
-        total_loss = 0
-        for batch in dataloader:
-            input_ids = batch['input_ids'].to(model.device)
-            attention_mask = batch['attention_mask'].to(model.device)
-            labels = batch['labels'].to(model.device)
+    # Configurar argumentos de entrenamiento
+    training_args = Seq2SeqTrainingArguments(
+        output_dir="./results",
+        eval_strategy="no", # Sin evaluación , puede cambiarse a epoch
 
-            optimizer.zero_grad()
-            loss = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels).loss
-            total_loss += loss.item()
-            loss.backward()
-            optimizer.step()
+        #puede cambiarse a 3e-5 o 5e-5
+        learning_rate=3e-5,
 
-        print(f"Epoch {epoch + 1}/{epochs}, Loss: {total_loss / len(dataloader)}")
+        #Modificar para agilizar entrenamiento  , 4 4 2 = 1 hra 30 min  .2 2 2 = 3hrs aprox
+        per_device_train_batch_size=4,
+        per_device_eval_batch_size=4,
+        num_train_epochs=2, 
+        gradient_accumulation_steps=2,  # Acumula gradientes durante 2 pasos antes de actualizarlos 
+
+
+        weight_decay=0.01,
+        save_total_limit=2,
+        predict_with_generate=True,
+        fp16=True,
+        dataloader_num_workers=4
+        #fp16=torch.cuda.is_available()
+    )
+
+    # Crear y ejecutar el entrenador
+    trainer = Seq2SeqTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_train_dataset,
+        eval_dataset=tokenized_eval_dataset,  # Especificar el dataset de evaluación
+        data_collator=data_collator,  # Usar el data collator
+        processing_class=tokenizer,  # Usar el tokenizer
+    )
+
+    trainer.train()

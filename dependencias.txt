@@ -1,11 +1,28 @@
-**Queda pendiente Jupoyter
+
 
 pip install transformers
 pip install datasets
 pip install sentencepiece
-pip install transformers torch datasets
 pip install python-utils
-pip3 install torch torchvision torchaudio
 pip install pandas 
 pip install torch
 pip install tqdm
+pip install transformers[torch]
+
+
+Para ejecutar codigo es python main.py 
+
+Pendientes
+Revisar como optimiazar entrenamiento, ya que dura demasiado, si noi, pregtar al profe el lunes
+es normal que el tiempo esperado sea aprox de 1 hra o mas , lo raro es que no sea de dias o meses 
+
+El dataset va en la carpeta data son 3 archivos
+
+open subtitles.en-es.en
+open subtitles.en-es.es
+open subtitles.en-es.ids
+https://opus.nlpl.eu/
+
+
+En main esta los pasos del codigo, en si hay que entrenar el modelo y luego esperar la salida satisfactoria, en caso de que no se traduzca, consultar con el profe el error
+
