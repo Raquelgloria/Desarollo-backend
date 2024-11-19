@@ -6,12 +6,16 @@ from datasets import Dataset
 def main():
     try:
         # Entrenamiento del modelo
-        print("Entrenando el modelo...")
-        train_model()  # Aquí se entrena el modelo MBART con el dataset.
+        save_dir = "./saved_model"
+        entrenar = input("¿Deseas entrenar el modelo? (s/n): ").lower()
+
+        if entrenar == "s":
+            print("Entrenando el modelo...")
+            train_model(save_dir=save_dir)
 
         # Cargar el modelo entrenado
         print("Cargando el modelo para traducción...")
-        model, tokenizer = load_model_and_tokenizer()  # Carga el modelo MBART y el tokenizador.
+        model, tokenizer = load_model_and_tokenizer(load_dir=save_dir)  # Carga el modelo MBART y el tokenizador.
 
         # Ejemplo de traducción
         source_text = "Hello, how are you?"

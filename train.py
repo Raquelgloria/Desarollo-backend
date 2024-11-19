@@ -2,8 +2,10 @@ import torch
 from transformers import MBartForConditionalGeneration, MBart50Tokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, EarlyStoppingCallback
 from dataset import get_dataset
 from utils import tokenize_function
+import os
 
-def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt"):
+
+def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt",save_dir="./saved_model"):
     """
     Entrena el modelo MBART con el dataset.
     """
@@ -50,7 +52,8 @@ def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt"):
         save_total_limit=2,
         predict_with_generate=True,
         fp16=True,
-        dataloader_num_workers=4
+        dataloader_num_workers=4,
+        logging_steps=100
         #fp16=torch.cuda.is_available()
     )
 
@@ -65,3 +68,13 @@ def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt"):
     )
 
     trainer.train()
+
+  # Guardar el modelo entrenado
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    print(f"Guardando modelo en {save_dir}...")
+    trainer.save_model(save_dir)  # Guarda el modelo, el tokenizador y el estado
+    tokenizer.save_pretrained(save_dir)
+
+    print("Entrenamiento finalizado y modelo guardado.")
