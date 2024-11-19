@@ -12,9 +12,7 @@ from utils import tokenize_function
 
 
 def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt", output_dir="./results/checkpoint-200"):
-    """
-    Entrena el modelo MBART con el dataset o realiza fine-tuning si ya existe un modelo entrenado.
-    """
+
     # Verificar si existe un modelo entrenado
     if os.path.exists(output_dir):
         print("Modelo existente encontrado. Cargando para fine-tuning...")

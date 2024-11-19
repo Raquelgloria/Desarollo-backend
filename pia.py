@@ -3,7 +3,7 @@ from translate import translate_text
 
 # Función que se ejecuta al presionar el botón
 def traducir():
-    source_text = entrada.get()
+    source_text = entrada.get("1.0", tk.END).strip()
     etiqueta_resultado.config(text=source_text)
 
     try:
@@ -18,12 +18,13 @@ def traducir():
 # Crear la ventana principal
 ventana = tk.Tk()
 ventana.title("Traductor Simple")
+ventana.geometry("500x400")
 
 # Crear el campo de entrada
 etiqueta = tk.Label(ventana, text="Ingrese una frase o palabra (en inglés):")
 etiqueta.pack(pady=5)
 
-entrada = tk.Entry(ventana, width=40)
+entrada = tk.Text(ventana, height=6, width=50)
 entrada.pack(pady=5)
 
 # Crear el botón
@@ -31,7 +32,7 @@ boton = tk.Button(ventana, text="Traducir", command=traducir)
 boton.pack(pady=10)
 
 # Etiqueta para mostrar el resultado
-etiqueta_resultado = tk.Label(ventana, text="", font=("Arial", 12))
+etiqueta_resultado = tk.Label(ventana, text="", font=("Arial", 12), justify="left")
 etiqueta_resultado.pack(pady=10)
 
 # Iniciar el bucle de la aplicación
