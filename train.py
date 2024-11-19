@@ -1,26 +1,39 @@
+import os
 import torch
-from transformers import MBartForConditionalGeneration, MBart50Tokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, EarlyStoppingCallback
+from transformers import (
+    MBartForConditionalGeneration,
+    MBart50Tokenizer,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    DataCollatorForSeq2Seq,
+)
 from dataset import get_dataset
 from utils import tokenize_function
-import os
 
 
-def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt",save_dir="./saved_model"):
+def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt", output_dir="./results/checkpoint-200"):
     """
-    Entrena el modelo MBART con el dataset.
+    Entrena el modelo MBART con el dataset o realiza fine-tuning si ya existe un modelo entrenado.
     """
+    # Verificar si existe un modelo entrenado
+    if os.path.exists(output_dir):
+        print("Modelo existente encontrado. Cargando para fine-tuning...")
+        model = MBartForConditionalGeneration.from_pretrained(output_dir)
+        tokenizer = MBart50Tokenizer.from_pretrained(output_dir)
+    else:
+        print("No se encontró un modelo entrenado. Iniciando desde el modelo preentrenado...")
+        model = MBartForConditionalGeneration.from_pretrained(model_name)
+        tokenizer = MBart50Tokenizer.from_pretrained(model_name)
+
     # Obtener el dataset
     dataset = get_dataset()
 
     # Dividir el dataset en entrenamiento y validación (80% / 20%)
-    train_dataset = dataset.train_test_split(test_size=0.2)["train"]
-    eval_dataset = dataset.train_test_split(test_size=0.2)["test"]
+    dataset_split = dataset.train_test_split(test_size=0.2)
+    train_dataset = dataset_split["train"]
+    eval_dataset = dataset_split["test"]
 
-    # Cargar modelo y tokenizador
-    tokenizer = MBart50Tokenizer.from_pretrained(model_name)
-    model = MBartForConditionalGeneration.from_pretrained(model_name)
-
-    # Tokenizar el dataset
+    # Tokenizar los datasets
     tokenized_train_dataset = train_dataset.map(
         lambda x: tokenize_function(x, tokenizer),
         batched=True
@@ -30,51 +43,44 @@ def train_model(model_name="facebook/mbart-large-50-many-to-many-mmt",save_dir="
         batched=True
     )
 
-    # Configurar el data collator para el Seq2SeqTrainer
+    # Configurar el data collator
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 
     # Configurar argumentos de entrenamiento
     training_args = Seq2SeqTrainingArguments(
-        output_dir="./results",
-        eval_strategy="no", # Sin evaluación , puede cambiarse a epoch
-
-        #puede cambiarse a 3e-5 o 5e-5
-        learning_rate=3e-5,
-
-        #Modificar para agilizar entrenamiento  , 4 4 2 = 1 hra 30 min  .2 2 2 = 3hrs aprox
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
-        num_train_epochs=2, 
-        gradient_accumulation_steps=2,  # Acumula gradientes durante 2 pasos antes de actualizarlos 
-
-
-        weight_decay=0.01,
-        save_total_limit=2,
-        predict_with_generate=True,
-        fp16=True,
-        dataloader_num_workers=4,
-        logging_steps=100
-        #fp16=torch.cuda.is_available()
+        output_dir=output_dir,               # Directorio para guardar el modelo
+        evaluation_strategy="epoch",        # Evaluar al final de cada época
+        learning_rate=3e-5,                 # Tasa de aprendizaje
+        per_device_train_batch_size=4,      # Tamaño del batch para entrenamiento
+        per_device_eval_batch_size=4,       # Tamaño del batch para evaluación
+        num_train_epochs=3,                 # Número de épocas
+        gradient_accumulation_steps=2,      # Acumulación de gradientes
+        weight_decay=0.01,                  # Decaimiento de peso
+        save_total_limit=2,                 # Limitar checkpoints guardados
+        save_strategy="epoch",              # Guardar al final de cada época
+        predict_with_generate=True,         # Usar generación para evaluación
+        fp16=torch.cuda.is_available(),     # Acelerar con FP16 si hay GPU
+        dataloader_num_workers=4,           # Número de hilos para el dataloader
+        logging_steps=100                   # Frecuencia de logs
     )
 
-    # Crear y ejecutar el entrenador
+    # Crear entrenador
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
         train_dataset=tokenized_train_dataset,
-        eval_dataset=tokenized_eval_dataset,  # Especificar el dataset de evaluación
-        data_collator=data_collator,  # Usar el data collator
-        processing_class=tokenizer,  # Usar el tokenizer
+        eval_dataset=tokenized_eval_dataset,
+        data_collator=data_collator,
+        tokenizer=tokenizer,  # Cambiar `processing_class` por `tokenizer`
     )
 
+    # Entrenar modelo
+    print("Iniciando entrenamiento...")
     trainer.train()
 
-  # Guardar el modelo entrenado
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    # Guardar modelo y tokenizador
+    print(f"Guardando modelo entrenado en {output_dir}...")
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
-    print(f"Guardando modelo en {save_dir}...")
-    trainer.save_model(save_dir)  # Guarda el modelo, el tokenizador y el estado
-    tokenizer.save_pretrained(save_dir)
-
-    print("Entrenamiento finalizado y modelo guardado.")
+    print("Entrenamiento finalizado.")
